@@ -45,6 +45,7 @@ modbus.readHoldingRegisters(slaveAddress, startAddress, quantity, function (erro
 The constructor function.
 - **port:** The communication port that modbus relies on, usually the port is an `UART`. The port must have one `write` method and can emit `data` event.
 - **options:** Some configrations to parse data from the port using mobus protocol.
+  - **mode:** Optional. The mode of modbus protocol, can be "RTU" or "ASCII". The default value is "RTU".
   - **cmdTimeout:** Optional. The command timeout of one modbus command. The default value is 500 milliseconds.
   - **parseSlaveData:** Optional. `parseSlaveData` is an boolean, when it is `true`, the response data will be converted to an readable `Array` format according the modbus protocol,
   otherwise, the response data will be in format of raw `Buffer`. The defalue vlaue is `true`.
