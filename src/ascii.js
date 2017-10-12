@@ -44,7 +44,6 @@ Ascii.prototype.encode = function (buffer) {
     bufferAscii.write(bufferAll.toString('hex').toUpperCase(), 1);
     // end with the two end delimiters
     bufferAscii.write('\r\n', bufferAscii.length - 2);
-    // bufferAscii.write('\n', bufferAscii.length - 1);
 
     return bufferAscii;
 };
@@ -95,22 +94,22 @@ Ascii.prototype._decode = function (buffer) {
     }
 
     // create a Buffer.alloc of the correct size (based on ascii encoded buffer length)
-    var bufferDecoded = Buffer.alloc((buffer.length - 1) / 2);
+    var bufferDecoded = Buffer.alloc((buffer.length - 3) / 2);
 
     // decode into Buffer.alloc (removing delimiters at start and end)
-    for (var i = 0; i < (buffer.length - 3) / 2; i++) {
+    for (var i = 0; i < bufferDecoded.length; i++) {
         bufferDecoded.write(String.fromCharCode(buffer.readUInt8(i * 2 + 1), buffer.readUInt8(i * 2 + 2)), i, 1, 'hex');
     }
 
     // check the lrc is true
-    var lrcValue = bufferDecoded.readUInt8(bufferDecoded.length - 2);
-    bufferDecoded = bufferDecoded.slice(0, -2);
-    if (lrc(bufferDecoded) !== lrcValue) {
+    var lrcValue = bufferDecoded.readUInt8(bufferDecoded.length - 1);
+    var data = bufferDecoded.slice(0, -1);
+    if (lrc(data) !== lrcValue) {
         // return null if lrc error
         return null;
     }
 
-    return bufferDecoded;
+    return data;
 };
 
 module.exports = Ascii;
