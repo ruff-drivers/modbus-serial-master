@@ -55,7 +55,7 @@ ModbusSerialMaster.prototype._getresponse = function (timeout, callback) {
     }
 };
 
-ModbusSerialMaster.prototype._checkResponse = function (slaveAddress, functionCode, response, propertyName, callback) {
+ModbusSerialMaster.prototype._checkResponse = function (slaveAddress, functionCode, propertyName, response, callback) {
     if (response.slaveAddress === slaveAddress) {
         if (response.functionCode === functionCode) {
             propertyName ? callback(undefined, response[propertyName]) : callback();
@@ -70,7 +70,7 @@ ModbusSerialMaster.prototype._checkResponse = function (slaveAddress, functionCo
 };
 
 // read status common handler
-ModbusSerialMaster.prototype._readStatus = function (requestHandler, parseHandler, checkResponseHandler, callback) {
+ModbusSerialMaster.prototype._commReqRes = function (requestHandler, parseHandler, checkResponseHandler, callback) {
     var callbackInvoked = false;
     this._getresponse(this._cmdTimeout, function (error, data) {
         if (callbackInvoked === true) {
@@ -82,7 +82,7 @@ ModbusSerialMaster.prototype._readStatus = function (requestHandler, parseHandle
             return;
         }
         var response = parseHandler(data);
-        checkResponseHandler(response, 'status', callback);
+        checkResponseHandler(response, callback);
     });
     requestHandler(function (error) {
         if (callbackInvoked === true) {
@@ -99,10 +99,10 @@ ModbusSerialMaster.prototype._readStatus = function (requestHandler, parseHandle
 // Modbus "Read Coil Status" (FC=0x01)
 ModbusSerialMaster.prototype.readCoils = function (slaveAddress, startAddress, quantity, callback) {
     var master = this._master;
-    this._readStatus(
+    this._commReqRes(
         master.requestReadCoils.bind(master, slaveAddress, startAddress, quantity),
         master.parseReadCoilsResponse.bind(master, quantity),
-        this._checkResponse.bind(this, slaveAddress, 0x01),
+        this._checkResponse.bind(this, slaveAddress, 0x01, 'status'),
         callback
     );
 };
@@ -110,10 +110,10 @@ ModbusSerialMaster.prototype.readCoils = function (slaveAddress, startAddress, q
 // Modbus "Read Input Status" (FC=0x02)
 ModbusSerialMaster.prototype.readDiscreteInputs = function (slaveAddress, startAddress, quantity, callback) {
     var master = this._master;
-    this._readStatus(
+    this._commReqRes(
         master.requestReadDiscreteInputs.bind(master, slaveAddress, startAddress, quantity),
         master.parseReadDiscreteInputsResponse.bind(master, quantity),
-        this._checkResponse.bind(this, slaveAddress, 0x02),
+        this._checkResponse.bind(this, slaveAddress, 0x02, 'status'),
         callback
     );
 };
@@ -121,10 +121,10 @@ ModbusSerialMaster.prototype.readDiscreteInputs = function (slaveAddress, startA
 // Modbus "Read Holding Registers" (FC=0x03)
 ModbusSerialMaster.prototype.readHoldingRegisters = function (slaveAddress, startAddress, quantity, callback) {
     var master = this._master;
-    this._readStatus(
+    this._commReqRes(
         master.requestReadHoldingRegisters.bind(master, slaveAddress, startAddress, quantity),
         master.parseReadHoldingRegistersResponse.bind(master, quantity),
-        this._checkResponse.bind(this, slaveAddress, 0x03),
+        this._checkResponse.bind(this, slaveAddress, 0x03, 'status'),
         callback
     );
 };
@@ -132,114 +132,53 @@ ModbusSerialMaster.prototype.readHoldingRegisters = function (slaveAddress, star
 // Modbus "Read Input Registers" (FC=0x04)
 ModbusSerialMaster.prototype.readInputRegisters = function (slaveAddress, startAddress, quantity, callback) {
     var master = this._master;
-    this._readStatus(
+    this._commReqRes(
         master.requestReadInputRegisters.bind(master, slaveAddress, startAddress, quantity),
         master.parseReadInputRegistersResponse.bind(master, quantity),
-        this._checkResponse.bind(this, slaveAddress, 0x04),
+        this._checkResponse.bind(this, slaveAddress, 0x04, 'status'),
         callback
     );
 };
 
 // Modbus "Write Single Coil" (FC=0x05)
 ModbusSerialMaster.prototype.writeSingleCoil = function (slaveAddress, address, state, callback) {
-    var that = this;
-    var callbackInvoked = false;
-    this._getresponse(this._cmdTimeout, function (error, data) {
-        if (callbackInvoked === true) {
-            return;
-        }
-        callbackInvoked = true;
-        if (error) {
-            callback(error);
-            return;
-        }
-        var response = that._master.parseWriteSingleCoilResponse(data);
-        that._checkResponse(slaveAddress, 0x05, response, 'state', callback);
-    });
-    this._master.requestWriteSingleCoil(slaveAddress, address, state, function (error) {
-        if (callbackInvoked === true) {
-            return;
-        }
-        if (error) {
-            callbackInvoked = true;
-            callback(error);
-            return;
-        }
-    });
+    var master = this._master;
+    this._commReqRes(
+        master.requestWriteSingleCoil.bind(master, slaveAddress, address, state),
+        master.parseWriteSingleCoilResponse.bind(master),
+        this._checkResponse.bind(this, slaveAddress, 0x05, 'state'),
+        callback
+    );
 };
 
 // Modbus "Write Single Register" (FC=0x06)
 ModbusSerialMaster.prototype.writeSingleRegister = function (slaveAddress, address, value, callback) {
-    var that = this;
-    var callbackInvoked = false;
-    this._getresponse(this._cmdTimeout, function (error, data) {
-        if (callbackInvoked === true) {
-            return;
-        }
-        callbackInvoked = true;
-        if (error) {
-            callback(error);
-            return;
-        }
-        var response = that._master.parseWriteSingleRegisterResponse(data);
-        that._checkResponse(slaveAddress, 0x06, response, 'value', callback);
-    });
-    this._master.requestWriteSingleRegister(slaveAddress, address, value, function (error) {
-        if (callbackInvoked === true) {
-            return;
-        }
-        if (error) {
-            callbackInvoked = true;
-            callback(error);
-            return;
-        }
-    });
-};
-
-// write multiple common handler
-ModbusSerialMaster.prototype._writeMultiple = function (requestHandler, parseHandler, checkResponseHandler, callback) {
-    var callbackInvoked = false;
-    this._getresponse(this._cmdTimeout, function (error, data) {
-        if (callbackInvoked === true) {
-            return;
-        }
-        callbackInvoked = true;
-        if (error) {
-            callback(error);
-            return;
-        }
-        var response = parseHandler(data);
-        checkResponseHandler(response, 'quantity', callback);
-    });
-    requestHandler(function (error) {
-        if (callbackInvoked === true) {
-            return;
-        }
-        if (error) {
-            callbackInvoked = true;
-            callback(error);
-            return;
-        }
-    });
+    var master = this._master;
+    this._commReqRes(
+        master.requestWriteSingleRegister.bind(master, slaveAddress, address, value),
+        master.parseWriteSingleRegisterResponse.bind(master),
+        this._checkResponse.bind(this, slaveAddress, 0x06, 'value'),
+        callback
+    );
 };
 
 // Modbus "Write Multiple Coils" (FC=0x0F)
 ModbusSerialMaster.prototype.writeMultipleCoils = function (slaveAddress, startAddress, states, callback) {
     var master = this._master;
-    this._writeMultiple(
+    this._commReqRes(
         master.requestWriteMultipleCoils.bind(master, slaveAddress, startAddress, states),
         master.parseWriteMultipleCoilsResponse.bind(master),
-        this._checkResponse.bind(this, slaveAddress, 0x0F),
+        this._checkResponse.bind(this, slaveAddress, 0x0F, 'quantity'),
         callback
     );
 };
 // Modbus "Write Multiple Registers" (FC=0x10)
 ModbusSerialMaster.prototype.writeMultipleRegisters = function (slaveAddress, startAddress, values, callback) {
     var master = this._master;
-    this._writeMultiple(
+    this._commReqRes(
         master.requestWriteMultipleRegisters.bind(master, slaveAddress, startAddress, values),
         master.parseWriteMultipleRegistersResponse.bind(master),
-        this._checkResponse.bind(this, slaveAddress, 0x10),
+        this._checkResponse.bind(this, slaveAddress, 0x10, 'quantity'),
         callback
     );
 };
