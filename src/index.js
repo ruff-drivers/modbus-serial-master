@@ -8,26 +8,14 @@
 var Modbus = require('./modbus');
 
 function ModbusSerialMaster(port, options) {
-    options = options || {};
-    this._responseTimeout = options.responseTimeout || 500;
-    this._cmdTimeout = options.cmdTimeout || this._responseTimeout;
+    options = options || Object.create(null);
+    this._cmdTimeout = options.cmdTimeout || 500;
 
     this._master = new Modbus(port, {
         mode: options.mode || 'rtu',
         parseSlaveData: options.parseSlaveData === undefined ? true : options.parseSlaveData
     });
 }
-
-Object.defineProperties(ModbusSerialMaster.prototype, {
-    responseTimeout: {
-        get: function () {
-            return this._responseTimeout;
-        },
-        set: function (value) {
-            this._responseTimeout = value;
-        }
-    }
-});
 
 ModbusSerialMaster.prototype._getresponse = function (timeout, callback) {
     var that = this;
